@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "PyTorch 基础训练闭环",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      590
+    ],
+    "views": [
+      {
+        "id": "training-hot-path",
+        "label": "训练主链路",
+        "focus": [
+          "dataset",
+          "loader",
+          "model",
+          "loss",
+          "autograd",
+          "optimizer"
+        ],
+        "note": "先把数据、模型、损失、反向传播和参数更新串成一条可运行链路。"
+      },
+      {
+        "id": "tensor-and-graph",
+        "label": "Tensor 与计算图",
+        "focus": [
+          "batch",
+          "model",
+          "loss",
+          "autograd"
+        ],
+        "note": "理解 forward 如何记录关系，backward 如何沿计算图传播梯度。"
+      },
+      {
+        "id": "experiment-evidence",
+        "label": "实验证据",
+        "focus": [
+          "optimizer",
+          "metrics",
+          "checkpoint"
+        ],
+        "note": "把训练循环转成可复测的 loss、指标和模型保存结果。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "数据"
+    },
+    {
+      "label": "前向"
+    },
+    {
+      "label": "反向"
+    },
+    {
+      "label": "更新"
+    },
+    {
+      "label": "证据"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "dataset",
+      "type": "database",
+      "label": "Dataset",
+      "sublabel": "样本与标签",
+      "stage": 0,
+      "row": 0,
+      "tag": "数据源"
+    },
+    {
+      "id": "loader",
+      "type": "backend",
+      "label": "DataLoader",
+      "sublabel": "batch / shuffle",
+      "stage": 0,
+      "row": 2,
+      "tag": "迭代"
+    },
+    {
+      "id": "batch",
+      "type": "frontend",
+      "label": "Tensor Batch",
+      "sublabel": "shape · dtype · device",
+      "stage": 1,
+      "row": 0,
+      "tag": "输入"
+    },
+    {
+      "id": "model",
+      "type": "backend",
+      "label": "nn.Module",
+      "sublabel": "forward → prediction",
+      "stage": 1,
+      "row": 2,
+      "tag": "模型"
+    },
+    {
+      "id": "loss",
+      "type": "backend",
+      "label": "Loss",
+      "sublabel": "prediction vs label",
+      "stage": 2,
+      "row": 1,
+      "tag": "目标"
+    },
+    {
+      "id": "autograd",
+      "type": "security",
+      "label": "Autograd",
+      "sublabel": "backward → gradients",
+      "stage": 2,
+      "row": 3,
+      "tag": "计算图",
+      "yOffset": -15
+    },
+    {
+      "id": "optimizer",
+      "type": "backend",
+      "label": "Optimizer",
+      "sublabel": "zero_grad · step",
+      "stage": 3,
+      "row": 2,
+      "tag": "更新"
+    },
+    {
+      "id": "metrics",
+      "type": "external",
+      "label": "Metrics",
+      "sublabel": "loss / accuracy",
+      "stage": 4,
+      "row": 0,
+      "tag": "复测"
+    },
+    {
+      "id": "checkpoint",
+      "type": "database",
+      "label": "Checkpoint",
+      "sublabel": "state_dict",
+      "stage": 4,
+      "row": 2,
+      "tag": "保存"
+    }
+  ],
+  "flows": [
+    {
+      "id": "dataset-loader",
+      "from": "dataset",
+      "to": "loader",
+      "label": "sample batches",
+      "classification": "data",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelAt": [
+        100,
+        200
+      ]
+    },
+    {
+      "id": "loader-batch",
+      "from": "loader",
+      "to": "batch",
+      "label": "yield (x, y)",
+      "classification": "data",
+      "variant": "emphasis"
+    },
+    {
+      "id": "batch-model",
+      "from": "batch",
+      "to": "model",
+      "label": "forward",
+      "classification": "tensor",
+      "variant": "default",
+      "labelAt": [
+        315,
+        200
+      ]
+    },
+    {
+      "id": "model-loss",
+      "from": "model",
+      "to": "loss",
+      "label": "prediction",
+      "classification": "tensor",
+      "variant": "default"
+    },
+    {
+      "id": "batch-loss",
+      "from": "batch",
+      "to": "loss",
+      "label": "ground truth",
+      "classification": "label",
+      "variant": "dashed"
+    },
+    {
+      "id": "loss-autograd",
+      "from": "loss",
+      "to": "autograd",
+      "label": "loss.backward()",
+      "classification": "gradient",
+      "variant": "emphasis",
+      "labelAt": [
+        530,
+        385
+      ]
+    },
+    {
+      "id": "autograd-optimizer",
+      "from": "autograd",
+      "to": "optimizer",
+      "label": "parameter gradients",
+      "classification": "gradient",
+      "variant": "emphasis"
+    },
+    {
+      "id": "loss-metrics",
+      "from": "loss",
+      "to": "metrics",
+      "label": "record loss",
+      "classification": "evidence",
+      "variant": "default"
+    },
+    {
+      "id": "optimizer-checkpoint",
+      "from": "optimizer",
+      "to": "checkpoint",
+      "label": "save state",
+      "classification": "evidence",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "先掌握五行训练代码",
+      "items": [
+        "zero_grad → forward → loss → backward → step",
+        "loss.backward() 计算梯度，step() 才修改参数",
+        "先用模拟 8×8 RGB 数据跑通闭环"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "学习时的观察点",
+      "items": [
+        "每个 batch 的 shape / dtype / device",
+        "计算图中的 requires_grad、grad 与 grad_fn",
+        "训练与评估模式对 BatchNorm / Dropout 的影响"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "暂不扩张范围",
+      "items": [
+        "先完成上篇基础，再选择 CV、NLP 或 LLM 应用",
+        "ONNX / TensorRT / 量化放到部署阶段",
+        "每次实验保留可复测命令与指标"
+      ]
+    }
+  ]
+}
